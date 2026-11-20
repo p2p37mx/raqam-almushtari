@@ -178,21 +178,25 @@ select.inp{appearance:none}
   <button class="btn sec" id="pickC" style="margin-bottom:14px">📇 اختيار من جهات الاتصال</button>
   <div class="field"><label>الاسم</label><input class="inp" id="eName" placeholder="اسم المشتري"></div>
   <div class="field"><label>رقم الهاتف</label><input class="inp" id="ePhone" type="tel" dir="ltr" placeholder="07xx xxx xxxx"></div>
-  <div class="field"><label>ملاحظة (اختياري)</label><textarea class="inp" id="eNote" placeholder="مثلاً: اشترى ايفون 15 — باقي عليه قسط"></textarea></div>
-  <label class="toggle" id="ePinRow"><span>📌 ثبّته بعد الإضافة (يوم واحد)</span><span class="sw" id="ePin"></span></label>
+  <div class="field"><label>ملاحظة (اختياري)</label><textarea class="inp" id="eNote"></textarea></div>
   <button class="btn pri" id="eSave">حفظ</button>
   <button class="btn sec" data-close>إلغاء</button>
+</div>
+
+<!-- الربط بالسيرفر: يطلع أول مرة فقط، أو اذا تغيّر العنوان/الرمز -->
+<div class="sheet" id="shSetup"><div class="grab"></div>
+  <h3>ربط التطبيق</h3>
+  <div id="setupMsg" class="box" style="margin:0 0 14px"></div>
+  <div class="field"><label>عنوان السيرفر</label><input class="inp" id="sUrl" dir="ltr" placeholder="https://raqam.sahaiq3.com/api.php"></div>
+  <div class="field"><label>رمز المزامنة</label><input class="inp" id="sKey" type="password" dir="ltr"></div>
+  <div class="field"><label>اسم هذا الجهاز</label><input class="inp" id="sDev"><div class="hint">يطلع بالتثبيت حتى تعرف منو ثبّت الاسم.</div></div>
+  <button class="btn pri" id="sSave">ربط</button>
 </div>
 
 <!-- الإعدادات -->
 <div class="sheet" id="shSet"><div class="grab"></div>
   <h3>الإعدادات</h3>
-  <div id="welcome" class="box" style="display:none;margin:0 0 14px">👋 هلا بيك! حتى تشترك الأجهزة بنفس القائمة، اكتب عنوان السيرفر ورمز المزامنة (نفس الرمز الي كتبته بملف config.php).</div>
-  <div class="field"><label>عنوان السيرفر</label><input class="inp" id="sUrl" dir="ltr" placeholder="https://raqam.sahaiq3.com/api.php"></div>
-  <div class="field"><label>رمز المزامنة</label><input class="inp" id="sKey" type="password" dir="ltr" placeholder="••••••"></div>
-  <div class="field"><label>اسم هذا الجهاز</label><input class="inp" id="sDev" placeholder="مثلاً: جهاز المحل / جوال علي"><div class="hint">يطلع بالتثبيت حتى تعرف منو ثبّت الاسم.</div></div>
   <label class="toggle" id="darkRow"><span>🌙 الوضع الليلي</span><span class="sw" id="darkSw"></span></label>
-  <button class="btn pri" id="sSave">حفظ واتصال</button>
   <div class="box">
     <div class="bt">⬆️ تحديث التطبيق</div>
     <div class="hint" id="verTxt"></div>
@@ -261,14 +265,15 @@ const IC={
 
 /* ===== السيرفر ===== */
 async function api(params,quiet){
-  if(!cfg.key){if(!quiet)openSet(true);throw new Error('nokey')}
+  if(!cfg.key){needSetup('first');throw new Error('nokey')}
   const body=new URLSearchParams(Object.assign({key:cfg.key,by:cfg.dev||''},params));
   let r,j;
   try{
     const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),15000);
     r=await fetch(cfg.url||DEF_URL,{method:'POST',body,signal:ctl.signal,cache:'no-store'});clearTimeout(to);
-    j=await r.json();
-  }catch(e){setOnline(false);if(!quiet)toast('ماكو اتصال بالسيرفر — تأكد من الانترنت');throw e}
+    try{j=await r.json()}catch(e){setOnline(false);needSetup('bad');throw e}
+  }catch(e){if(e.message!=='nokey'){setOnline(false);if(!quiet)toast('ماكو اتصال بالسيرفر — تأكد من الانترنت')}throw e}
+  if(r.status===403){setOnline(false);needSetup('key');const e=new Error('key');e.j=j;throw e}
   setOnline(true);
   if(j.now)offset=j.now-Math.floor(Date.now()/1000);
   if(!j.ok){if(!quiet&&!j.dup)toast(j.err||'صار خطأ');const e=new Error(j.err);e.j=j;throw e}
@@ -299,7 +304,7 @@ function render(fromTimer){
     </div>`}).join('');
 
   $('#count').textContent=all.length?(q?list.length+' نتيجة من '+all.length:all.length+' اسم'):'';
-  if(!all.length){$('#list').innerHTML=`<div class="empty"><div class="big">📇</div>${cfg.key?'بعد ماكو أسماء.<br>اضغط «إضافة اسم» حتى تضيف أول مشتري':'اضبط الإعدادات أول شي حتى تتزامن الأجهزة'}</div>`;return}
+  if(!all.length){$('#list').innerHTML=`<div class="empty"><div class="big">📇</div>${cfg.key?'بعد ماكو أسماء.<br>اضغط «إضافة اسم» حتى تضيف أول مشتري':'اربط التطبيق بالسيرفر أول شي'}</div>`;return}
   if(!list.length){$('#list').innerHTML=`<div class="empty"><div class="big">🔍</div>ماكو نتيجة لـ «${esc($('#q').value)}»<br><button class="btn pri" style="margin-top:14px" id="addFromQ">إضافة «${esc($('#q').value)}»</button></div>`;return}
   let h='',L=null;
   for(const c of list){
@@ -376,7 +381,6 @@ function openEdit(id,pre){
   editId=id||null;const c=id?byId(id):null;
   $('#editTitle').textContent=c?'تعديل الاسم':'إضافة اسم';
   $('#eName').value=c?c.name:(pre&&pre.name||'');$('#ePhone').value=c?c.phone:(pre&&pre.phone||'');$('#eNote').value=c?c.note:'';
-  $('#ePinRow').style.display=c?'none':'flex';$('#ePin').classList.remove('on');
   open('#shEdit');setTimeout(()=>{if(!c&&!$('#eName').value)$('#eName').focus()},300);
 }
 async function saveEdit(force){
@@ -387,7 +391,6 @@ async function saveEdit(force){
     if(editId){await api({a:'edit',id:editId,name,phone,note});toast('✅ تعدّل');close()}
     else{
       const j=await api({a:'add',name,phone,note,force:force?1:0});
-      if($('#ePin').classList.contains('on')){await api({a:'pin',id:j.id,minutes:1440})}
       toast('✅ انضاف «'+name+'»');close();
     }
   }catch(e){
@@ -400,19 +403,29 @@ window.onContactPicked=function(name,phone){
 };
 
 /* ===== الإعدادات ===== */
-function openSet(first){
-  $('#welcome').style.display=first?'block':'none';
-  $('#sUrl').value=cfg.url||DEF_URL;$('#sKey').value=cfg.key||'';$('#sDev').value=cfg.dev||'';
+const SETUP_MSG={first:'👋 هلا بيك! اكتب معلومات الربط مرة وحدة بس، وبعدها ما تطلع مرة ثانية.',
+  key:'🔑 رمز المزامنة غلط أو تغيّر — اكتب الرمز الصحيح.',bad:'🌐 عنوان السيرفر تغيّر أو ما يشتغل — تأكد منه.',manual:'تعديل معلومات الربط.'};
+function needSetup(why){
+  if(stack.includes('#shSetup'))return;
+  $('#setupMsg').textContent=SETUP_MSG[why]||SETUP_MSG.first;
+  $('#sUrl').value=cfg.url||DEF_URL;$('#sKey').value=why==='key'?'':(cfg.key||'');$('#sDev').value=cfg.dev||'';
+  closeAll();open('#shSetup');
+}
+function openSet(){
   $('#darkSw').classList.toggle('on',!!cfg.dark);
   $('#verTxt').textContent='النسخة الحالية: '+verName()+' (رقم '+verCode()+')';
   open('#shSet');
 }
 async function saveSet(){
-  cfg.url=$('#sUrl').value.trim()||DEF_URL;cfg.key=$('#sKey').value.trim();cfg.dev=$('#sDev').value.trim();
-  LS.set('cfg',cfg);
-  if(!cfg.key){toast('اكتب رمز المزامنة');return}
-  data.rev=0;
-  try{await api({a:'list',rev:0});toast('✅ اتصل بالسيرفر');close()}catch(e){}
+  const url=$('#sUrl').value.trim()||DEF_URL,key=$('#sKey').value.trim(),dev=$('#sDev').value.trim();
+  if(!key){toast('اكتب رمز المزامنة');return}
+  const old=Object.assign({},cfg);
+  cfg.url=url;cfg.key=key;cfg.dev=dev;data.rev=0;
+  const btn=$('#sSave');btn.disabled=true;btn.textContent='جاري الربط...';
+  stack=stack.filter(x=>x!=='#shSetup');   // حتى ما يرجع يفتح نفسه أثناء الفحص
+  try{await api({a:'list',rev:0});LS.set('cfg',cfg);$('#shSetup').classList.remove('show');zfix();if(!stack.length)$('#shade').classList.remove('show');toast('✅ انربط التطبيق')}
+  catch(e){if(e.message!=='key'&&!(e.j)){cfg=old;if(!stack.includes('#shSetup')){stack.push('#shSetup');zfix()}toast('ما كدر يوصل للسيرفر — تأكد من العنوان والانترنت')}}
+  finally{btn.disabled=false;btn.textContent='ربط'}
 }
 function applyTheme(){document.body.classList.toggle('dark',!!cfg.dark);if(A&&A.setBars)try{A.setBars(cfg.dark?1:0)}catch(e){}}
 
@@ -466,11 +479,12 @@ document.addEventListener('click',e=>{
 });
 $('#shade').onclick=close;
 $('#fab').onclick=()=>openEdit(null);
-$('#btnSet').onclick=()=>openSet(false);
+$('#btnSet').onclick=()=>openSet();
+// ضغطة مطولة على رقم النسخة = تعديل الربط يدوياً
+(function(){let t;const v=$('#verTxt');v.addEventListener('touchstart',()=>{t=setTimeout(()=>needSetup('manual'),1200)});['touchend','touchmove'].forEach(e=>v.addEventListener(e,()=>clearTimeout(t)));v.addEventListener('dblclick',()=>needSetup('manual'))})();
 $('#btnUpd').onclick=()=>upd?doUpdate():checkUpdate(true);
 $('#upGo').onclick=doUpdate;$('#sUpd').onclick=()=>checkUpdate(true);
 $('#sSave').onclick=saveSet;$('#eSave').onclick=()=>saveEdit(false);
-$('#ePinRow').onclick=e=>{e.preventDefault();$('#ePin').classList.toggle('on')};
 $('#darkRow').onclick=e=>{e.preventDefault();cfg.dark=!cfg.dark;$('#darkSw').classList.toggle('on',cfg.dark);LS.set('cfg',cfg);applyTheme()};
 $('#pickC').onclick=()=>{if(A&&A.pickContact)A.pickContact();else toast('هاي الميزة بالتطبيق فقط')};
 $('#credit').onclick=e=>{if(A&&A.openUrl){e.preventDefault();A.openUrl('https://wa.me/9647703000874')}};
@@ -479,7 +493,7 @@ window.addEventListener('resize',fixStick);
 
 /* ===== التشغيل ===== */
 applyTheme();render();showLast();
-if(!cfg.key)setTimeout(()=>openSet(true),400);else refresh(true);
+if(!cfg.key)setTimeout(()=>needSetup('first'),400);else refresh(true);
 setInterval(()=>{if(!document.hidden)refresh(true)},6000);   // مزامنة كل 6 ثواني
 setInterval(()=>{render(true)},20000);                           // تحديث العد التنازلي للتثبيت
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){refresh(true)}});
