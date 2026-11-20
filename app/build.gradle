@@ -1,0 +1,50 @@
+plugins {
+    id 'com.android.application'
+}
+
+// رقم النسخة ياخذ رقم البناء من GitHub تلقائياً — حتى زر «تحديث» يعرف اكو نسخة أحدث
+def runNo = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int
+
+android {
+    namespace 'com.sahaiq.raqam'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.sahaiq.raqam'
+        minSdk 24
+        targetSdk 34
+        versionCode runNo
+        versionName "1.${runNo}"
+    }
+
+    buildFeatures { buildConfig true }
+
+    signingConfigs {
+        release {
+            // المفتاح ينصنع أول مرة بالـ Actions ويتحفظ بالمستودع، محمي بالسر SIGNING_PASSWORD
+            storeFile file('raqam.p12')
+            storeType 'pkcs12'
+            storePassword System.getenv('SIGNING_PASSWORD')
+            keyAlias 'raqam'
+            keyPassword System.getenv('SIGNING_PASSWORD')
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint { abortOnError false; checkReleaseBuilds false }
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.13.1'
+    implementation 'androidx.webkit:webkit:1.11.0'
+}

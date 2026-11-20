@@ -1,0 +1,71 @@
+name: بناء رقم المشتري (APK)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: فحص السر
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          if [ -z "$SIGNING_PASSWORD" ]; then
+            echo "::error::لازم تضيف سر اسمه SIGNING_PASSWORD من Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # أول مرة فقط: يصنع مفتاح التوقيع ويحفظه بالمستودع (محمي بالسر) — حتى كل التحديثات تنزل فوق بعض
+      - name: مفتاح التوقيع
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          if [ ! -f app/raqam.p12 ]; then
+            keytool -genkeypair -v -storetype PKCS12 -keystore app/raqam.p12 -alias raqam \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$SIGNING_PASSWORD" -keypass "$SIGNING_PASSWORD" \
+              -dname "CN=Ali Hameed, O=Sahaiq, C=IQ"
+            git config user.name "github-actions"
+            git config user.email "actions@github.com"
+            git add app/raqam.p12
+            git commit -m "مفتاح التوقيع [skip ci]"
+            git push
+          fi
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build APK
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Rename
+        run: cp app/build/outputs/apk/release/app-release.apk RaqamAlmushtari.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RaqamAlmushtari-APK
+          path: RaqamAlmushtari.apk
+
+      # التطبيق يفحص هنا: اذا رقم النسخة أكبر من المثبت يطلع زر «حدّث هسه»
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: رقم المشتري — نسخة ${{ github.run_number }}
+          files: RaqamAlmushtari.apk
+          make_latest: true
