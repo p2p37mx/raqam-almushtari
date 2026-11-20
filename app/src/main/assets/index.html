@@ -219,6 +219,11 @@ const DEF_URL='https://raqam.sahaiq3.com/api.php';
 const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
 let cfg=LS.get('cfg',{url:DEF_URL,key:'',dev:'',dark:false});
+// المعلومات مثبتة داخل التطبيق: الرمز من البناء، واسم الجهاز من الجوال نفسه
+const BUILT_KEY=(()=>{try{return A&&A.appKey?A.appKey():''}catch(e){return ''}})();
+if(!cfg.key&&BUILT_KEY)cfg.key=BUILT_KEY;
+if(!cfg.dev){try{if(A&&A.deviceName)cfg.dev=A.deviceName()}catch(e){}}
+if(!cfg.url)cfg.url=DEF_URL;
 let data=LS.get('cache',{contacts:[],rev:0,now:0,at:0});
 let offset=0;          // فرق ساعة السيرفر عن الجهاز
 let online=null, busy=false, curId=null, editId=null, upd=null;

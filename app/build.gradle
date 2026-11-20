@@ -4,6 +4,8 @@ plugins {
 
 // رقم النسخة ياخذ رقم البناء من GitHub تلقائياً — حتى زر «تحديث» يعرف اكو نسخة أحدث
 def runNo = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int
+// رمز المزامنة ينحط داخل التطبيق من سر GitHub اسمه APP_KEY (مو مكتوب بالكود)
+def appKeyB64 = java.util.Base64.getEncoder().encodeToString((System.getenv('APP_KEY') ?: '').getBytes('UTF-8'))
 
 android {
     namespace 'com.sahaiq.raqam'
@@ -15,6 +17,7 @@ android {
         targetSdk 34
         versionCode runNo
         versionName "1.${runNo}"
+        buildConfigField 'String', 'APP_KEY_B64', "\"${appKeyB64}\""
     }
 
     buildFeatures { buildConfig true }

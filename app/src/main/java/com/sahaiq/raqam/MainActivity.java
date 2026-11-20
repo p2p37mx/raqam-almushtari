@@ -240,6 +240,21 @@ public class MainActivity extends Activity {
         public String versionName() { return BuildConfig.VERSION_NAME; }
 
         @JavascriptInterface
+        public String appKey() {
+            try {
+                return new String(android.util.Base64.decode(BuildConfig.APP_KEY_B64, android.util.Base64.DEFAULT), "UTF-8");
+            } catch (Exception e) { return ""; }
+        }
+
+        @JavascriptInterface
+        public String deviceName() {
+            String n = null;
+            try { n = Settings.Global.getString(getContentResolver(), "device_name"); } catch (Exception ignored) {}
+            if (n == null || n.isEmpty()) n = Build.MANUFACTURER + " " + Build.MODEL;
+            return n;
+        }
+
+        @JavascriptInterface
         public void downloadUpdate(String url) { runOnUiThread(() -> startDownload(url)); }
 
         @JavascriptInterface
