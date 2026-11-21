@@ -142,6 +142,10 @@ select.inp{appearance:none}
 .sw::after{content:"";position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 .sw.on{background:var(--green)}.sw.on::after{right:25px}
 
+.dlbar{height:14px;border-radius:8px;background:var(--bg);overflow:hidden;margin:6px 0 10px;border:1px solid var(--line)}
+#dlFill{height:100%;width:0;background:linear-gradient(90deg,var(--green2),var(--green));border-radius:8px;transition:width .3s}
+.dlrow{display:flex;justify-content:space-between;align-items:center;font-size:15px;margin-bottom:6px}
+.dlrow b{font-size:22px;color:var(--green)}.dlrow span{color:var(--muted);direction:ltr}
 .toast{position:fixed;left:50%;bottom:96px;transform:translate(-50%,20px);background:#1d2b38;color:#fff;padding:11px 18px;border-radius:14px;font-size:14.5px;z-index:90;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .upbar{display:none;margin:10px 14px 0;background:linear-gradient(135deg,#f5b301,#ffcf3f);color:#1b1b1b;border-radius:14px;padding:10px 12px;font-weight:700;align-items:center;gap:8px;font-size:14px}
@@ -232,6 +236,13 @@ select.inp{appearance:none}
   <div class="two"><button class="btn dng" id="askYes">نعم</button><button class="btn sec" data-close>لا</button></div>
 </div>
 
+<!-- تنزيل التحديث -->
+<div class="sheet" id="shDl"><div class="grab"></div>
+  <h3>⬇️ جاري تنزيل التحديث</h3>
+  <div class="dlbar"><div id="dlFill"></div></div>
+  <div class="dlrow"><b id="dlPct">0%</b><span id="dlMb"></span></div>
+  <div class="hint" id="dlHint">لا تسد التطبيق لحد ما يكمل التنزيل.</div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -434,8 +445,9 @@ function contactAct(d,c){
 })();
 
 /* ===== شريط التنقل السريع ===== */
+const FAST_SCROLL=false;   // شريط التنقل السريع — خليه true اذا تريد ترجعه
 function buildFS(on){
-  const fs=$('#fs');
+  const fs=$('#fs');if(!FAST_SCROLL)on=false;
   if(!on){fs.classList.remove('show');return}
   const ls=[...document.querySelectorAll('.lsec')].map(x=>x.dataset.l);
   fs.innerHTML=ls.map(l=>`<span data-l="${esc(l)}">${esc(l)}</span>`).join('');
@@ -547,7 +559,7 @@ async function checkUpdate(manual){
 function doUpdate(){
   if(!upd)return checkUpdate(true);
   ask('تحديث التطبيق','راح ينزل '+upd.name+' ويطلب منك تثبيته. بياناتك محفوظة بالسيرفر وما تنمسح.',()=>{
-    if(A&&A.downloadUpdate){A.downloadUpdate(upd.url);toast('⬇️ جاري تنزيل التحديث...')}else window.open(upd.url);
+    if(A&&A.downloadUpdate){A.downloadUpdate(upd.url)}else window.open(upd.url);
   });
 }
 
@@ -602,6 +614,17 @@ setInterval(()=>{if(!document.hidden)refresh(true)},6000);   // مزامنة ك�
 setInterval(()=>{render(true)},20000);                           // تحديث العد التنازلي للتثبيت
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){refresh(true)}});
 window.onResumeApp=()=>refresh(true);
+// نسبة تنزيل التحديث (تجي من الأندرويد)
+window.onUpdateProgress=function(done,total,state){
+  if(!stack.includes('#shDl')){$('#dlFill').style.width='0';open('#shDl')}
+  const mb=b=>(b/1048576).toFixed(1);
+  const pct=total>0?Math.min(100,Math.floor(done*100/total)):0;
+  $('#dlFill').style.width=pct+'%';$('#dlPct').textContent=total>0?pct+'%':'...';
+  $('#dlMb').textContent=total>0?mb(done)+' / '+mb(total)+' MB':'';
+  if(state==='ok'){$('#dlPct').textContent='100%';$('#dlFill').style.width='100%';$('#dlHint').textContent='✅ كمل التنزيل — اضغط «تثبيت» بالنافذة الي تطلع';setTimeout(()=>{if(stack.includes('#shDl')){stack=stack.filter(x=>x!=='#shDl');$('#shDl').classList.remove('show');zfix();if(!stack.length)$('#shade').classList.remove('show')}},2500)}
+  else if(state==='fail'){$('#dlHint').textContent='❌ فشل التنزيل — تأكد من الانترنت وجرّب مرة ثانية'}
+  else $('#dlHint').textContent='لا تسد التطبيق لحد ما يكمل التنزيل.';
+};
 setTimeout(()=>checkUpdate(false),2500);
 })();
 </script>

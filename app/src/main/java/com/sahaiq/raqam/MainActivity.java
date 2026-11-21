@@ -14,6 +14,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.ContactsContract;
 import android.provider.Settings;
 import android.view.View;
@@ -42,6 +44,27 @@ public class MainActivity extends Activity {
     private WebView web;
     private long dlId = -1;
     private boolean rcvOn = false;
+    private final Handler ui = new Handler(Looper.getMainLooper());
+
+    // يتابع نسبة التنزيل ويدزها للواجهة كل ثلث ثانية
+    private final Runnable poll = new Runnable() {
+        @Override
+        public void run() {
+            if (dlId < 0) return;
+            DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            long done = 0, total = -1; int st = -1;
+            try (Cursor c = dm.query(new DownloadManager.Query().setFilterById(dlId))) {
+                if (c != null && c.moveToFirst()) {
+                    done = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+                    total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+                    st = c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+                }
+            } catch (Exception ignored) {}
+            String state = st == DownloadManager.STATUS_SUCCESSFUL ? "ok" : st == DownloadManager.STATUS_FAILED ? "fail" : "run";
+            if (web != null) web.evaluateJavascript("window.onUpdateProgress&&window.onUpdateProgress(" + done + "," + total + ",'" + state + "')", null);
+            if (state.equals("run")) ui.postDelayed(this, 300);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle b) {
@@ -199,6 +222,8 @@ public class MainActivity extends Activity {
             rcvOn = true;
         }
         dlId = dm.enqueue(r);
+        ui.removeCallbacks(poll);
+        ui.post(poll);
     }
 
     /* ===== الجسر بين الواجهة والأندرويد ===== */
