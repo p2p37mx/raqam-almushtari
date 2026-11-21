@@ -48,7 +48,7 @@ input,textarea{font-family:inherit;font-size:16px;color:var(--text)}
 .pins .ph b{color:var(--text)}
 .prow{display:flex;gap:10px;overflow-x:auto;padding:2px 14px 4px;scrollbar-width:none}
 .prow::-webkit-scrollbar{display:none}
-.pchip{flex:0 0 auto;display:flex;align-items:center;gap:9px;background:var(--chip);border:1.5px solid var(--gold);border-radius:16px;padding:7px 10px 7px 12px;min-width:150px;max-width:260px;box-shadow:var(--shadow);text-align:right}
+.pchip{flex:0 0 auto;display:flex;align-items:center;gap:9px;background:var(--chip);border:1.5px solid var(--gold);border-radius:16px;padding:7px 10px 7px 12px;min-width:120px;max-width:230px;box-shadow:var(--shadow);text-align:right}
 .pchip .av{width:38px;height:38px;font-size:16px}
 .pchip .n{font-weight:700;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pchip .r{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap}
@@ -62,6 +62,24 @@ input,textarea{font-family:inherit;font-size:16px;color:var(--text)}
 .lsec{position:sticky;top:var(--stick,0px);z-index:5;background:var(--bg);padding:8px 18px 4px;font-weight:800;color:var(--green);font-size:14px}
 .row{display:flex;align-items:center;gap:13px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line)}
 .row:active{background:var(--line)}
+.row,.pchip{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.row.press{background:var(--line)}
+/* شريط التنقل السريع */
+.fs{position:fixed;left:2px;top:calc(var(--stick,120px) + 10px);bottom:96px;width:30px;z-index:25;display:none;flex-direction:column;justify-content:space-between;align-items:center;padding:6px 0;border-radius:15px;touch-action:none}
+.fs.show{display:flex}
+.fs.act{background:rgba(127,127,127,.15)}
+.fs span{font-size:11.5px;font-weight:800;color:var(--muted);line-height:1;padding:1px 0;flex:1;display:flex;align-items:center}
+.fs span.on{color:var(--green)}
+.fsb{position:fixed;left:50px;width:62px;height:62px;border-radius:50% 50% 50% 8px;background:var(--green);color:#fff;font-size:30px;font-weight:800;display:none;place-items:center;z-index:26;box-shadow:var(--shadow);transform:translateY(-50%)}
+.fsb.show{display:grid}
+.list{padding-left:30px}
+/* قائمة الضغط المطول */
+.qhead{display:flex;align-items:center;gap:12px;margin:4px 0 14px}
+.qhead .av{width:50px;height:50px;font-size:21px}
+.qhead .n{font-weight:800;font-size:18px}.qhead .p{color:var(--muted);direction:ltr;text-align:right;font-size:14px}
+.qi{display:flex;align-items:center;gap:14px;width:100%;padding:14px 6px;border-bottom:1px solid var(--line);font-size:16px;font-weight:600;text-align:right}
+.qi:last-child{border-bottom:0}.qi .e{font-size:20px;width:28px;text-align:center}
+.qi.dng{color:var(--red)}
 .av{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:19px;flex:0 0 auto}
 .row .info{flex:1;min-width:0}
 .row .n{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
@@ -73,8 +91,8 @@ input,textarea{font-family:inherit;font-size:16px;color:var(--text)}
 .empty{text-align:center;color:var(--muted);padding:60px 20px;line-height:1.9}
 .empty .big{font-size:48px}
 
-.fab{position:fixed;left:18px;bottom:22px;z-index:30;height:58px;padding:0 22px 0 20px;border-radius:20px;background:linear-gradient(135deg,var(--green2),var(--green));color:#fff;font-weight:800;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(10,138,70,.45)}
-.fab svg{width:24px;height:24px;stroke:#fff;stroke-width:2.6;fill:none;stroke-linecap:round}
+.fab{position:fixed;left:44px;bottom:22px;z-index:30;width:58px;height:58px;justify-content:center;border-radius:50%;background:linear-gradient(135deg,var(--green2),var(--green));color:#fff;font-weight:800;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(10,138,70,.45)}
+.fab svg{width:28px;height:28px;stroke:#fff;stroke-width:2.6;fill:none;stroke-linecap:round}
 .fab:active{transform:scale(.96)}
 
 /* ===== النوافذ السفلية ===== */
@@ -165,9 +183,12 @@ select.inp{appearance:none}
 <div class="meta"><span id="count"></span><span id="last"></span></div>
 <main class="list" id="list"></main>
 
-<button class="fab" id="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>إضافة اسم</button>
+<button class="fab" id="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
 
+<div class="fs" id="fs"></div><div class="fsb" id="fsb"></div>
 <div class="shade" id="shade"></div>
+<!-- قائمة الضغط المطول -->
+<div class="sheet" id="shQuick"><div class="grab"></div><div id="quickBody"></div></div>
 
 <!-- تفاصيل الاسم -->
 <div class="sheet" id="shView"><div class="grab"></div><div id="viewBody"></div></div>
@@ -299,17 +320,18 @@ function render(fromTimer){
   $('#prow').innerHTML=pins.map(c=>{const s=c.pinned_until-nowS();return `
     <div class="pchip" data-id="${c.id}">
       <div class="av" style="background:${color(c.name)}">${esc(initial(c.name))}</div>
-      <div style="min-width:0"><div class="n">${esc(c.name)}</div><div class="r ${s<3600?'soon':''}">⏳ ${left(s)}</div></div>
+      <div style="min-width:0"><div class="n">${esc(c.name)}</div></div>
       ${c.phone?`<button class="call" data-call="${c.id}">${IC.call}</button>`:''}
     </div>`}).join('');
 
   $('#count').textContent=all.length?(q?list.length+' نتيجة من '+all.length:all.length+' اسم'):'';
-  if(!all.length){$('#list').innerHTML=`<div class="empty"><div class="big">📇</div>${cfg.key?'بعد ماكو أسماء.<br>اضغط «إضافة اسم» حتى تضيف أول مشتري':'اربط التطبيق بالسيرفر أول شي'}</div>`;return}
+  if(!all.length||!list.length)buildFS(false);
+  if(!all.length){$('#list').innerHTML=`<div class="empty"><div class="big">📇</div>${cfg.key?'بعد ماكو أسماء.<br>اضغط زر + حتى تضيف أول مشتري':'اربط التطبيق بالسيرفر أول شي'}</div>`;return}
   if(!list.length){$('#list').innerHTML=`<div class="empty"><div class="big">🔍</div>ماكو نتيجة لـ «${esc($('#q').value)}»<br><button class="btn pri" style="margin-top:14px" id="addFromQ">إضافة «${esc($('#q').value)}»</button></div>`;return}
   let h='',L=null;
   for(const c of list){
     const l=letter(c.name);
-    if(l!==L&&!q){h+=`<div class="lsec">${esc(l)}</div>`;L=l}
+    if(l!==L&&!q){h+=`<div class="lsec" data-l="${esc(l)}">${esc(l)}</div>`;L=l}
     h+=`<div class="row" data-id="${c.id}">
       <div class="av" style="background:${color(c.name)}">${esc(initial(c.name))}</div>
       <div class="info"><div class="n">${esc(c.name)}${isPinned(c)?'<span class="pinic">📌</span>':''}</div>
@@ -319,7 +341,7 @@ function render(fromTimer){
     </div>`;
   }
   $('#list').innerHTML=h;
-  fixStick();
+  fixStick();buildFS(!q&&list.length>12);
   if(!fromTimer&&curId&&$('#shView').classList.contains('show')&&!($('#custom')&&$('#custom').classList.contains('show')))renderView();
 }
 function fixStick(){const h=$('#top').offsetHeight;document.documentElement.style.setProperty('--stick',h+'px')}
@@ -329,7 +351,7 @@ const byId=id=>data.contacts.find(c=>c.id==id);
 let stack=[];
 function zfix(){stack.forEach((x,i)=>{$(x).style.zIndex=50+i*2});$('#shade').style.zIndex=stack.length?49+(stack.length-1)*2:40}
 function open(id){const el=$(id);stack=stack.filter(x=>x!==id);stack.push(id);zfix();el.classList.add('show');$('#shade').classList.add('show')}
-function close(){const id=stack.pop();if(id)$(id).classList.remove('show');zfix();if(!stack.length)$('#shade').classList.remove('show');if(id==='#shView')curId=null;return !!id}
+function close(){const id=stack.pop();if(id)$(id).classList.remove('show');zfix();if(!stack.length)$('#shade').classList.remove('show');if(id==='#shView'||id==='#shQuick')curId=null;return !!id}
 function closeAll(){while(stack.length)close()}
 window.onBack=function(){if(stack.length){close();return true}if($('#q').value){$('#q').value='';render();return true}return false};
 
@@ -370,9 +392,80 @@ function durGrid(){
 }
 function openView(id){curId=id;renderView();open('#shView')}
 
+/* ===== الضغط المطول ===== */
+function openQuick(id){
+  const c=byId(id);if(!c)return;curId=id;
+  const p=isPinned(c);
+  $('#quickBody').innerHTML=`
+   <div class="qhead"><div class="av" style="background:${color(c.name)}">${esc(initial(c.name))}</div>
+     <div><div class="n">${esc(c.name)}</div>${c.phone?`<div class="p">${esc(fmtPhone(c.phone))}</div>`:''}</div></div>
+   <div id="qList">
+     ${p?`<button class="qi" data-q="unpin"><span class="e">📌</span>إلغاء التثبيت <span class="hint" style="margin:0 auto 0 0">${left(c.pinned_until-nowS())}</span></button>`
+        :`<button class="qi" data-q="pin"><span class="e">📌</span>تثبيت</button>`}
+     ${p?`<button class="qi" data-q="pin"><span class="e">⏳</span>تغيير مدة التثبيت</button>`:''}
+     ${c.phone?`<button class="qi" data-q="call"><span class="e">📞</span>اتصال</button>
+     <button class="qi" data-q="wa"><span class="e">💬</span>واتساب</button>
+     <button class="qi" data-q="copy"><span class="e">📋</span>نسخ الرقم</button>`:''}
+     <button class="qi" data-q="edit"><span class="e">✏️</span>تعديل</button>
+     <button class="qi dng" data-q="del"><span class="e">🗑</span>حذف</button>
+   </div>
+   <div id="qDur" style="display:none"><div class="bt" style="font-weight:800;margin-bottom:10px">📌 اختار مدة التثبيت</div>${durGrid()}</div>`;
+  open('#shQuick');
+  try{navigator.vibrate&&navigator.vibrate(25)}catch(e){}
+}
+function delContact(c){ask('حذف «'+c.name+'»؟','راح ينحذف من كل الأجهزة.',()=>api({a:'delete',id:c.id}).then(()=>{toast('🗑 انحذف');closeAll()}).catch(()=>{}))}
+function contactAct(d,c){
+  if(d==='call')doCall(c);
+  else if(d==='wa'){if(!c.phone)return toast('ماكو رقم');const u='https://wa.me/'+waNum(c.phone);if(A&&A.openUrl)A.openUrl(u);else window.open(u)}
+  else if(d==='copy'){const s=c.phone||c.name;if(A&&A.copy)A.copy(s);else navigator.clipboard&&navigator.clipboard.writeText(s);toast('📋 انتسخ')}
+  else if(d==='edit')openEdit(c.id);
+}
+(function(){
+  let tm=null,sx=0,sy=0,el=null;
+  const cancel=()=>{clearTimeout(tm);tm=null;if(el)el.classList.remove('press');el=null};
+  document.addEventListener('touchstart',e=>{
+    const r=e.target.closest('.row,.pchip');if(!r||e.target.closest('[data-call]'))return;
+    el=r;sx=e.touches[0].clientX;sy=e.touches[0].clientY;
+    tm=setTimeout(()=>{window._lp=Date.now();const id=+r.dataset.id;cancel();openQuick(id)},480);
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{if(!tm)return;const t=e.touches[0];if(Math.abs(t.clientX-sx)>10||Math.abs(t.clientY-sy)>10)cancel()},{passive:true});
+  document.addEventListener('touchend',cancel);document.addEventListener('touchcancel',cancel);
+  document.addEventListener('contextmenu',e=>{if(e.target.closest('.row,.pchip'))e.preventDefault()});
+})();
+
+/* ===== شريط التنقل السريع ===== */
+function buildFS(on){
+  const fs=$('#fs');
+  if(!on){fs.classList.remove('show');return}
+  const ls=[...document.querySelectorAll('.lsec')].map(x=>x.dataset.l);
+  fs.innerHTML=ls.map(l=>`<span data-l="${esc(l)}">${esc(l)}</span>`).join('');
+  fs.classList.add('show');
+}
+(function(){
+  const fs=$('#fs'),bb=$('#fsb');let last=null;
+  function at(y){
+    const sp=[...fs.children];if(!sp.length)return;
+    const r=fs.getBoundingClientRect();let i=Math.floor((y-r.top)/r.height*sp.length);
+    i=Math.max(0,Math.min(sp.length-1,i));const l=sp[i].dataset.l;
+    bb.textContent=l;bb.style.top=Math.max(r.top+30,Math.min(r.bottom-30,y))+'px';bb.classList.add('show');
+    if(l===last)return;last=l;
+    sp.forEach(x=>x.classList.toggle('on',x===sp[i]));
+    const sec=document.querySelector('.lsec[data-l="'+CSS.escape(l)+'"]');
+    const first=sec&&sec.nextElementSibling;if(!first)return;
+    const y2=first.getBoundingClientRect().top+window.scrollY-$('#top').offsetHeight-sec.offsetHeight;
+    window.scrollTo(0,Math.max(0,y2));
+    try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}
+  }
+  const end=()=>{fs.classList.remove('act');bb.classList.remove('show');last=null;[...fs.children].forEach(x=>x.classList.remove('on'))};
+  fs.addEventListener('touchstart',e=>{e.preventDefault();fs.classList.add('act');at(e.touches[0].clientY)},{passive:false});
+  fs.addEventListener('touchmove',e=>{e.preventDefault();at(e.touches[0].clientY)},{passive:false});
+  fs.addEventListener('touchend',end);fs.addEventListener('touchcancel',end);
+  fs.addEventListener('mousedown',e=>{at(e.clientY);const mv=ev=>at(ev.clientY),up=()=>{end();removeEventListener('mousemove',mv);removeEventListener('mouseup',up)};addEventListener('mousemove',mv);addEventListener('mouseup',up)});
+})();
+
 async function pin(min){
   const c=byId(curId);if(!c)return;
-  try{await api({a:'pin',id:c.id,minutes:min});toast('📌 تثبّت «'+c.name+'» — '+left(min*60).replace('باقي ','لمدة '));}catch(e){}
+  try{await api({a:'pin',id:c.id,minutes:min});if(stack[stack.length-1]==='#shQuick')close();toast('📌 تثبّت «'+c.name+'» — '+left(min*60).replace('باقي ','لمدة '));}catch(e){}
 }
 function ask(t,m,yes){$('#askT').textContent=t;$('#askM').textContent=m;$('#askYes').onclick=()=>{close();yes()};open('#shAsk')}
 
@@ -460,7 +553,15 @@ function doCall(c){if(!c||!c.phone)return toast('ماكو رقم');if(A&&A.call)
 document.addEventListener('click',e=>{
   const t=e.target;
   const cl=t.closest('[data-call]');if(cl){e.stopPropagation();doCall(byId(cl.dataset.call));return}
+  if(window._lp&&Date.now()-window._lp<700){e.preventDefault();return}
   const row=t.closest('.row,.pchip');if(row){openView(+row.dataset.id);return}
+  const qi=t.closest('[data-q]');
+  if(qi){const c=byId(curId);if(!c)return;const q=qi.dataset.q;
+    if(q==='pin'){$('#qList').style.display='none';$('#qDur').style.display='block'}
+    else if(q==='unpin')api({a:'unpin',id:c.id}).then(()=>{toast('انلغى التثبيت');close()}).catch(()=>{});
+    else if(q==='del')delContact(c);
+    else{close();contactAct(q,c)}
+    return}
   if(t.closest('[data-close]')){close();return}
   const act=t.closest('[data-do]');
   if(act){const c=byId(curId);const d=act.dataset.do;
@@ -470,8 +571,8 @@ document.addEventListener('click',e=>{
     else if(d==='edit')openEdit(c.id);
     return}
   const dur=t.closest('.dur');
-  if(dur){const m=+dur.dataset.min;if(m)pin(m);else{document.querySelectorAll('.dur').forEach(x=>x.classList.remove('sel'));dur.classList.add('sel');$('#custom').classList.add('show')}return}
-  if(t.id==='cGo'){const m=Math.round((+$('#cNum').value||0)*(+$('#cUnit').value));if(m<1)return toast('اكتب المدة');pin(m);return}
+  if(dur){const m=+dur.dataset.min;if(m)pin(m);else{const box=dur.closest('.sheet');box.querySelectorAll('.dur').forEach(x=>x.classList.remove('sel'));dur.classList.add('sel');box.querySelector('.custom').classList.add('show')}return}
+  if(t.id==='cGo'){const box=t.closest('.sheet');const m=Math.round((+box.querySelector('#cNum').value||0)*(+box.querySelector('#cUnit').value));if(m<1)return toast('اكتب المدة');pin(m);return}
   if(t.id==='vUnpin'){const c=byId(curId);api({a:'unpin',id:c.id}).then(()=>toast('انلغى التثبيت')).catch(()=>{});return}
   if(t.id==='vExt'){const w=$('#durWrap');w.style.display=w.style.display==='none'?'block':'none';return}
   if(t.id==='vDel'){const c=byId(curId);ask('حذف «'+c.name+'»؟','راح ينحذف من كل الأجهزة.',()=>api({a:'delete',id:c.id}).then(()=>{toast('🗑 انحذف');if(stack.includes('#shView')){stack=stack.filter(x=>x!=='#shView');$('#shView').classList.remove('show');curId=null;if(!stack.length)$('#shade').classList.remove('show')}}).catch(()=>{}));return}
