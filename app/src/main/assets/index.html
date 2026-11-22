@@ -59,7 +59,7 @@ input,textarea{font-family:inherit;font-size:16px;color:var(--text)}
 /* ===== القائمة ===== */
 .meta{display:flex;justify-content:space-between;padding:12px 16px 4px;font-size:13px;color:var(--muted)}
 .list{padding-bottom:110px}
-.lsec{position:sticky;top:var(--stick,0px);z-index:5;background:var(--bg);padding:8px 18px 4px;font-weight:800;color:var(--green);font-size:14px}
+.lsec{position:relative;background:var(--bg);padding:8px 18px 4px;font-weight:800;color:var(--green);font-size:14px}
 .row{display:flex;align-items:center;gap:13px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line)}
 .row:active{background:var(--line)}
 .row,.pchip{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -162,9 +162,8 @@ select.inp{appearance:none}
       <h1>رقم المشتري</h1>
       <small><span class="dot" id="dot"></span><span id="sync">الساحة العراقية</span></small>
     </div>
-    <button class="ibtn" id="btnUpd" title="تحديث التطبيق">
+    <button class="ibtn" id="btnUpd" title="تحديث الصفحة">
       <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-      <span class="badge" id="updBadge"></span>
     </button>
     <button class="ibtn" id="btnSet" title="الإعدادات">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
@@ -541,7 +540,7 @@ function applyTheme(){document.body.classList.toggle('dark',!!cfg.dark);if(A&&A.
 const verCode=()=>{try{return A&&A.versionCode?parseInt(A.versionCode()):0}catch(e){return 0}};
 const verName=()=>{try{return A&&A.versionName?A.versionName():'متصفح'}catch(e){return '?'}};
 async function checkUpdate(manual){
-  const b=$('#btnUpd');if(manual)b.classList.add('spin');
+  const b=$('#sUpd');if(manual){b.disabled=true;b.textContent='جاري الفحص...'}
   try{
     const r=await fetch('https://api.github.com/repos/'+REPO+'/releases/latest',{cache:'no-store'});
     if(!r.ok)throw new Error(r.status);
@@ -550,11 +549,11 @@ async function checkUpdate(manual){
     const asset=(j.assets||[]).find(a=>/\.apk$/i.test(a.name));
     if(n>verCode()&&asset){
       upd={n,url:asset.browser_download_url,name:j.name||('نسخة '+n)};
-      $('#updBadge').classList.add('show');$('#upbar').classList.add('show');$('#upText').textContent='اكو نسخة جديدة ('+n+')';
+      $('#upbar').classList.add('show');$('#upText').textContent='اكو نسخة جديدة ('+n+')';
       if(manual)doUpdate();
-    }else{upd=null;$('#updBadge').classList.remove('show');$('#upbar').classList.remove('show');if(manual)toast('✅ عندك آخر نسخة ('+verCode()+')')}
+    }else{upd=null;$('#upbar').classList.remove('show');if(manual)toast('✅ عندك آخر نسخة ('+verCode()+')')}
   }catch(e){if(manual)toast('ما كدرت أفحص التحديث — تأكد من الانترنت')}
-  finally{b.classList.remove('spin')}
+  finally{b.disabled=false;b.textContent='فحص التحديث'}
 }
 function doUpdate(){
   if(!upd)return checkUpdate(true);
@@ -598,7 +597,12 @@ $('#fab').onclick=()=>openEdit(null);
 $('#btnSet').onclick=()=>openSet();
 // ضغطة مطولة على رقم النسخة = تعديل الربط يدوياً
 (function(){let t;const v=$('#verTxt');v.addEventListener('touchstart',()=>{t=setTimeout(()=>needSetup('manual'),1200)});['touchend','touchmove'].forEach(e=>v.addEventListener(e,()=>clearTimeout(t)));v.addEventListener('dblclick',()=>needSetup('manual'))})();
-$('#btnUpd').onclick=()=>upd?doUpdate():checkUpdate(true);
+$('#btnUpd').onclick=async()=>{   // تحديث الصفحة: يجيب آخر نسخة من الأسماء والتثبيتات
+  const b=$('#btnUpd');if(b.classList.contains('spin'))return;b.classList.add('spin');
+  busy=false;data.rev=0;
+  try{await api({a:'list',rev:0});toast('✅ تحدّثت')}catch(e){}
+  finally{setTimeout(()=>b.classList.remove('spin'),400)}
+};
 $('#upGo').onclick=doUpdate;$('#sUpd').onclick=()=>checkUpdate(true);
 $('#sSave').onclick=saveSet;$('#eSave').onclick=()=>saveEdit(false);
 $('#darkRow').onclick=e=>{e.preventDefault();cfg.dark=!cfg.dark;$('#darkSw').classList.toggle('on',cfg.dark);LS.set('cfg',cfg);applyTheme()};
