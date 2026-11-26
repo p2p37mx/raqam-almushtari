@@ -154,6 +154,13 @@ select.inp{appearance:none}
 .sug .si .av{width:32px;height:32px;font-size:14px}
 .sug .si .n{font-weight:700;font-size:14.5px}.sug .si .n mark{background:rgba(245,179,1,.35);color:inherit;border-radius:3px}
 .sug .si .p{font-size:12.5px;color:var(--muted);direction:ltr;margin-right:auto}
+.waitbtn{display:none;align-items:center;gap:12px;width:calc(100% - 28px);margin:12px 14px 0;padding:13px 14px;border-radius:16px;background:var(--card);border:1.5px solid var(--gold);box-shadow:var(--shadow);font-weight:800;font-size:16px;text-align:right}
+.waitbtn.show{display:flex}.waitbtn:active{transform:scale(.98)}
+.waitbtn .wi{font-size:20px}.waitbtn .wt{flex:1}
+.waitbtn .wc{min-width:30px;height:30px;padding:0 9px;border-radius:15px;background:var(--gold);color:#1b1b1b;display:grid;place-items:center;font-size:15px}
+.waitbtn .wa{color:var(--muted);font-size:22px}
+.wlist{margin:0 -18px}.wlist .row:first-child{border-top:1px solid var(--line)}
+.wlist .left{font-size:12px;color:var(--muted);margin-top:2px}
 .toast{position:fixed;left:50%;bottom:96px;transform:translate(-50%,20px);background:#1d2b38;color:#fff;padding:11px 18px;border-radius:14px;font-size:14.5px;z-index:90;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .upbar{display:none;margin:10px 14px 0;background:linear-gradient(135deg,#f5b301,#ffcf3f);color:#1b1b1b;border-radius:14px;padding:10px 12px;font-weight:700;align-items:center;gap:8px;font-size:14px}
@@ -190,6 +197,7 @@ select.inp{appearance:none}
   <div class="ph">📌 <b>المثبتة</b> <span id="pinCount"></span></div>
   <div class="prow" id="prow"></div>
 </section>
+<button class="waitbtn" id="waitBtn"><span class="wi">📌</span><span class="wt">الأسماء في الانتظار</span><span class="wc" id="waitCount">0</span><span class="wa">‹</span></button>
 
 <div class="meta"><span id="count"></span><span id="last"></span></div>
 <main class="list" id="list"></main>
@@ -198,6 +206,8 @@ select.inp{appearance:none}
 
 <div class="fs" id="fs"></div><div class="fsb" id="fsb"></div>
 <div class="shade" id="shade"></div>
+<!-- الأسماء في الانتظار (المثبتة) -->
+<div class="sheet" id="shWait"><div class="grab"></div><h3>📌 الأسماء في الانتظار</h3><div id="waitList" class="wlist"></div></div>
 <!-- قائمة الضغط المطول -->
 <div class="sheet" id="shQuick"><div class="grab"></div><div id="quickBody"></div></div>
 
@@ -321,7 +331,20 @@ async function api(params,quiet){
   return j;
 }
 function setOnline(v){online=v;$('#dot').className='dot '+(v?'on':'off');showLast()}
-function showLast(){$('#sync').textContent=online===false?'غير متصل — يعرض آخر نسخة':(data.at?'متزامن '+ago(data.at):'الساحة العراقية');$('#last').textContent=''}
+function syncLbl(){const n=data.contacts.length;$('#sync').textContent=(online===false?'غير متزامن':(data.at?'متزامن':'الساحة العراقية'))+(n?' ( '+n+' اسم )':'')}
+function showLast(){syncLbl()}
+const PIN_STYLE='button';
+function renderWait(pins){
+  pins=pins||data.contacts.filter(isPinned).sort((a,b)=>a.name.localeCompare(b.name,'ar'));
+  if(!pins.length){$('#waitList').innerHTML='<div class="empty">ماكو أسماء بالانتظار</div>';if(stack.includes('#shWait'))setTimeout(()=>{if(!data.contacts.some(isPinned)&&stack[stack.length-1]==='#shWait')close()},800);return}
+  $('#waitList').innerHTML=pins.map(c=>`<div class="row" data-id="${c.id}">
+      <div class="av" style="background:${color(c.name)}">${esc(initial(c.name))}</div>
+      <div class="info"><div class="n">${esc(c.name)}</div>
+        ${c.phone?`<div class="p">${esc(fmtPhone(c.phone))}</div>`:''}
+        ${c.note?`<div class="note">${esc(c.note)}</div>`:''}</div>
+      ${c.phone?`<button class="qcall" data-call="${c.id}">${IC.call}</button>`:''}
+    </div>`).join('');
+}
 async function refresh(quiet){if(busy||!cfg.key)return;busy=true;try{await api({a:'list',rev:data.rev||0},true)}catch(e){}finally{busy=false}}
 
 /* ===== العرض ===== */
@@ -331,9 +354,13 @@ function render(fromTimer){
   const all=data.contacts.slice().sort((a,b)=>a.name.localeCompare(b.name,'ar'));
   const list=q?all.filter(c=>norm(c.name).includes(q)||(qd.length>=2&&digits(c.phone).includes(qd))||norm(c.note).includes(q)):all;
 
-  // المثبتة
-  const pins=all.filter(isPinned).sort((a,b)=>b.pinned_at-a.pinned_at);
-  $('#pins').classList.toggle('show',pins.length>0);
+  // المثبتة — PIN_STYLE: 'button' زر «الأسماء في الانتظار» / 'chips' الشريط القديم
+  const pins=all.filter(isPinned).sort((a,b)=>a.name.localeCompare(b.name,'ar'));
+  $('#pins').classList.toggle('show',PIN_STYLE==='chips'&&pins.length>0);
+  $('#waitBtn').classList.toggle('show',PIN_STYLE==='button'&&pins.length>0);
+  $('#waitCount').textContent=pins.length;
+  renderWait(pins);
+  syncLbl();
   $('#pinCount').textContent=pins.length?'('+pins.length+')':'';
   $('#prow').innerHTML=pins.map(c=>{const s=c.pinned_until-nowS();return `
     <div class="pchip" data-id="${c.id}">
@@ -342,7 +369,8 @@ function render(fromTimer){
       ${c.phone?`<button class="call" data-call="${c.id}">${IC.call}</button>`:''}
     </div>`}).join('');
 
-  $('#count').textContent=all.length?(q?list.length+' نتيجة من '+all.length:all.length+' اسم'):'';
+  $('#count').textContent=q&&all.length?list.length+' نتيجة من '+all.length:'';
+  $('.meta').style.display=q?'flex':'none';
   if(!all.length||!list.length)buildFS(false);
   if(!all.length){$('#list').innerHTML=`<div class="empty"><div class="big">📇</div>${cfg.key?'بعد ماكو أسماء.<br>اضغط زر + حتى تضيف أول مشتري':'اربط التطبيق بالسيرفر أول شي'}</div>`;return}
   if(!list.length){$('#list').innerHTML=`<div class="empty"><div class="big">🔍</div>ماكو نتيجة لـ «${esc($('#q').value)}»<br><button class="btn pri" style="margin-top:14px" id="addFromQ">إضافة «${esc($('#q').value)}»</button></div>`;return}
@@ -378,14 +406,14 @@ function renderView(){
   const p=isPinned(c);
   let pinHtml;
   if(p){
-    pinHtml=`<div class="box"><div class="bt">📌 مثبّت بالشريط العلوي</div>
+    pinHtml=`<div class="box"><div class="bt">📌 بالانتظار (مثبّت)</div>
       <div class="pinned-info"><div class="big">⏳ ${left(c.pinned_until-nowS())}</div>
       ${c.pinned_by?`<div class="hint">ثبّته: ${esc(c.pinned_by)}</div>`:''}
       <div class="hint">ينتهي: ${new Date((c.pinned_until-offset)*1000).toLocaleString('ar-IQ',{weekday:'long',hour:'numeric',minute:'2-digit',day:'numeric',month:'numeric'})}</div></div>
       <div class="two"><button class="btn dng" id="vUnpin">إلغاء التثبيت</button><button class="btn sec" id="vExt">تغيير المدة</button></div>
       <div id="durWrap" style="display:none;margin-top:12px">${durGrid()}</div></div>`;
   }else{
-    pinHtml=`<div class="box"><div class="bt">📌 تثبيت بالشريط العلوي — اختار المدة</div>${durGrid()}</div>`;
+    pinHtml=`<div class="box"><div class="bt">📌 تثبيت بالانتظار — اختار المدة</div>${durGrid()}</div>`;
   }
   $('#viewBody').innerHTML=`
     <div class="hero"><div class="av" style="background:${color(c.name)}">${esc(initial(c.name))}</div>
@@ -629,6 +657,7 @@ document.addEventListener('click',e=>{
 });
 $('#shade').onclick=close;
 $('#fab').onclick=()=>openEdit(null);
+$('#waitBtn').onclick=()=>{renderWait();open('#shWait')};
 $('#btnSet').onclick=()=>openSet();
 // ضغطة مطولة على رقم النسخة = تعديل الربط يدوياً
 (function(){let t;const v=$('#verTxt');v.addEventListener('touchstart',()=>{t=setTimeout(()=>needSetup('manual'),1200)});['touchend','touchmove'].forEach(e=>v.addEventListener(e,()=>clearTimeout(t)));v.addEventListener('dblclick',()=>needSetup('manual'))})();
