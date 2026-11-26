@@ -338,7 +338,7 @@ async function api(params,quiet){
   return j;
 }
 function setOnline(v){online=v;$('#dot').className='dot '+(v?'on':'off');showLast()}
-function syncLbl(){const n=data.contacts.length;$('#sync').textContent=(online===false?'غير متزامن':(data.at?'متزامن':'الساحة العراقية'))+(n?' ( '+n+' اسم )':'')}
+function syncLbl(){const n=data.contacts.length;$('#sync').textContent=(online===false?'غير متزامن':(data.at?'متزامن':'الساحة العراقية'))}
 function showLast(){syncLbl()}
 const PIN_STYLE='swap';   // 'swap' الواجهة = الانتظار وجهات الاتصال داخل زر / 'button' / 'chips'
 let mode='wait';
