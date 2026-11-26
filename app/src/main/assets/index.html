@@ -146,6 +146,14 @@ select.inp{appearance:none}
 #dlFill{height:100%;width:0;background:linear-gradient(90deg,var(--green2),var(--green));border-radius:8px;transition:width .3s}
 .dlrow{display:flex;justify-content:space-between;align-items:center;font-size:15px;margin-bottom:6px}
 .dlrow b{font-size:22px;color:var(--green)}.dlrow span{color:var(--muted);direction:ltr}
+.sug{margin-top:8px;border-radius:14px;overflow:hidden;border:1.5px solid var(--line);background:var(--card)}
+.sug.dup{border-color:var(--red)}
+.sug .sh{padding:8px 12px;font-size:13px;font-weight:800;color:var(--muted);background:var(--bg)}
+.sug.dup .sh{color:#fff;background:var(--red)}
+.sug .si{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border-top:1px solid var(--line);text-align:right}
+.sug .si .av{width:32px;height:32px;font-size:14px}
+.sug .si .n{font-weight:700;font-size:14.5px}.sug .si .n mark{background:rgba(245,179,1,.35);color:inherit;border-radius:3px}
+.sug .si .p{font-size:12.5px;color:var(--muted);direction:ltr;margin-right:auto}
 .toast{position:fixed;left:50%;bottom:96px;transform:translate(-50%,20px);background:#1d2b38;color:#fff;padding:11px 18px;border-radius:14px;font-size:14.5px;z-index:90;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .upbar{display:none;margin:10px 14px 0;background:linear-gradient(135deg,#f5b301,#ffcf3f);color:#1b1b1b;border-radius:14px;padding:10px 12px;font-weight:700;align-items:center;gap:8px;font-size:14px}
@@ -200,8 +208,8 @@ select.inp{appearance:none}
 <div class="sheet" id="shEdit"><div class="grab"></div>
   <h3 id="editTitle">إضافة اسم</h3>
   <button class="btn sec" id="pickC" style="margin-bottom:14px">📇 اختيار من جهات الاتصال</button>
-  <div class="field"><label>الاسم</label><input class="inp" id="eName" placeholder="اسم المشتري"></div>
-  <div class="field"><label>رقم الهاتف</label><input class="inp" id="ePhone" type="tel" dir="ltr" placeholder="07xx xxx xxxx"></div>
+  <div class="field"><label>الاسم</label><input class="inp" id="eName" placeholder="اسم المشتري" autocomplete="off"><div id="eSug"></div></div>
+  <div class="field"><label>رقم الهاتف</label><input class="inp" id="ePhone" type="tel" dir="ltr" placeholder="07xx xxx xxxx"><div id="ePhWarn"></div></div>
   <div class="field"><label>ملاحظة (اختياري)</label><textarea class="inp" id="eNote"></textarea></div>
   <button class="btn pri" id="eSave">حفظ</button>
   <button class="btn sec" data-close>إلغاء</button>
@@ -484,15 +492,39 @@ async function pin(min){
 function ask(t,m,yes){$('#askT').textContent=t;$('#askM').textContent=m;$('#askYes').onclick=()=>{close();yes()};open('#shAsk')}
 
 /* ===== إضافة / تعديل ===== */
+// ===== فحص الأسماء المتشابهة والمكررة أثناء الكتابة =====
+const sameName=(a,b)=>norm(a).replace(/\s+/g,' ')===norm(b).replace(/\s+/g,' ');
+function phoneKey(p){let d=digits(p);if(d.startsWith('00964'))d='0'+d.slice(5);else if(d.startsWith('964')&&d.length>11)d='0'+d.slice(3);return d}
+function hl(name,q){const n=String(name);const i=norm(n).indexOf(q);if(!q||i<0)return esc(n);return esc(n.slice(0,i))+'<mark>'+esc(n.slice(i,i+q.length))+'</mark>'+esc(n.slice(i+q.length))}
+function sugRow(c,q){return `<button class="si" data-open="${c.id}"><div class="av" style="background:${color(c.name)}">${esc(initial(c.name))}</div><span class="n">${hl(c.name,q)}</span>${c.phone?`<span class="p">${esc(fmtPhone(c.phone))}</span>`:''}</button>`}
+function checkDup(){
+  const raw=$('#eName').value.trim(),q=norm(raw).replace(/\s+/g,' ');
+  const others=data.contacts.filter(c=>c.id!=editId);
+  let h='';
+  if(q.length>=2){
+    const exact=others.filter(c=>sameName(c.name,raw));
+    const toks=q.split(' ').filter(Boolean);
+    const sim=others.filter(c=>!exact.includes(c)&&(()=>{const n=norm(c.name);return n.includes(q)||toks.every(t=>n.split(/\s+/).some(w=>w.startsWith(t)))})()).slice(0,5);
+    if(exact.length)h+=`<div class="sug dup"><div class="sh">⚠️ هذا الاسم موجود</div>${exact.map(c=>sugRow(c,q)).join('')}</div>`;
+    if(sim.length)h+=`<div class="sug"><div class="sh">أسماء متشابهة (${sim.length})</div>${sim.map(c=>sugRow(c,q)).join('')}</div>`;
+  }
+  $('#eSug').innerHTML=h;
+  const pk=phoneKey($('#ePhone').value);let w='';
+  if(pk.length>=7){const m=others.filter(c=>phoneKey(c.phone)===pk);if(m.length)w=`<div class="sug dup"><div class="sh">⚠️ هذا الرقم موجود</div>${m.map(c=>sugRow(c,'')).join('')}</div>`}
+  $('#ePhWarn').innerHTML=w;
+}
+$('#eName').addEventListener('input',checkDup);$('#ePhone').addEventListener('input',checkDup);
 function openEdit(id,pre){
   editId=id||null;const c=id?byId(id):null;
   $('#editTitle').textContent=c?'تعديل الاسم':'إضافة اسم';
   $('#eName').value=c?c.name:(pre&&pre.name||'');$('#ePhone').value=c?c.phone:(pre&&pre.phone||'');$('#eNote').value=c?c.note:'';
-  open('#shEdit');setTimeout(()=>{if(!c&&!$('#eName').value)$('#eName').focus()},300);
+  checkDup();open('#shEdit');setTimeout(()=>{if(!c&&!$('#eName').value)$('#eName').focus()},300);
 }
-async function saveEdit(force){
+async function saveEdit(force,forceName){
   const name=$('#eName').value.trim(),phone=$('#ePhone').value.trim(),note=$('#eNote').value.trim();
   if(!name){toast('اكتب الاسم');$('#eName').focus();return}
+  if(!forceName){const ex=data.contacts.find(c=>c.id!=editId&&sameName(c.name,name));
+    if(ex){ask('الاسم موجود','«'+ex.name+'» موجود أصلاً'+(ex.phone?' برقم '+fmtPhone(ex.phone):'')+' — تريد تضيفه مرة ثانية؟',()=>saveEdit(force,true));return}}
   const btn=$('#eSave');btn.disabled=true;btn.textContent='جاري الحفظ...';
   try{
     if(editId){await api({a:'edit',id:editId,name,phone,note});toast('✅ تعدّل');close()}
@@ -501,12 +533,13 @@ async function saveEdit(force){
       toast('✅ انضاف «'+name+'»');close();
     }
   }catch(e){
-    if(e.j&&e.j.dup){ask('الرقم مكرر',e.j.err+' — تريد تضيفه هم؟',()=>saveEdit(true))}
+    if(e.j&&e.j.dup){ask('الرقم مكرر',e.j.err+' — تريد تضيفه هم؟',()=>saveEdit(true,true))}
   }finally{btn.disabled=false;btn.textContent='حفظ'}
 }
 window.onContactPicked=function(name,phone){
   if(name&&!$('#eName').value.trim())$('#eName').value=name; else if(name)$('#eName').value=name;
   if(phone)$('#ePhone').value=phone;
+  checkDup();
 };
 
 /* ===== الإعدادات ===== */
@@ -569,6 +602,8 @@ document.addEventListener('click',e=>{
   const cl=t.closest('[data-call]');if(cl){e.stopPropagation();doCall(byId(cl.dataset.call));return}
   if(window._lp&&Date.now()-window._lp<700){e.preventDefault();return}
   const row=t.closest('.row,.pchip');if(row){openView(+row.dataset.id);return}
+  const so=t.closest('[data-open]');
+  if(so){const id=+so.dataset.open;close();setTimeout(()=>openView(id),150);return}
   const qi=t.closest('[data-q]');
   if(qi){const c=byId(curId);if(!c)return;const q=qi.dataset.q;
     if(q==='pin'){$('#qList').style.display='none';$('#qDur').style.display='block'}
