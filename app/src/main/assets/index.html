@@ -159,6 +159,10 @@ select.inp{appearance:none}
 .waitbtn .wi{font-size:20px}.waitbtn .wt{flex:1}
 .waitbtn .wc{min-width:30px;height:30px;padding:0 9px;border-radius:15px;background:var(--gold);color:#1b1b1b;display:grid;place-items:center;font-size:15px}
 .waitbtn .wa{color:var(--muted);font-size:22px}
+.modebar{display:none;align-items:center;gap:10px;padding:12px 14px 4px;font-size:17px}
+.modebar.show{display:flex}.modebar button{width:38px;height:38px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:20px}
+.modebar span{color:var(--muted);font-size:14px;margin-right:auto}
+.wtitle{display:none;padding:14px 16px 6px;font-weight:800;color:var(--muted);font-size:14.5px}.wtitle.show{display:block}
 .wlist{margin:0 -18px}.wlist .row:first-child{border-top:1px solid var(--line)}
 .wlist .left{font-size:12px;color:var(--muted);margin-top:2px}
 .toast{position:fixed;left:50%;bottom:96px;transform:translate(-50%,20px);background:#1d2b38;color:#fff;padding:11px 18px;border-radius:14px;font-size:14.5px;z-index:90;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.3)}
@@ -197,6 +201,9 @@ select.inp{appearance:none}
   <div class="ph">📌 <b>المثبتة</b> <span id="pinCount"></span></div>
   <div class="prow" id="prow"></div>
 </section>
+<button class="waitbtn" id="allBtn" style="border-color:var(--green)"><span class="wi">📇</span><span class="wt">جهات الاتصال</span><span class="wc" id="allCount" style="background:var(--green);color:#fff">0</span><span class="wa">‹</span></button>
+<div class="modebar" id="modeBar"><button id="modeBack">→</button><b>📇 جهات الاتصال</b><span id="modeCount"></span></div>
+<div class="wtitle" id="wTitle">📌 الأسماء في الانتظار <span id="wTitleN"></span></div>
 <button class="waitbtn" id="waitBtn"><span class="wi">📌</span><span class="wt">الأسماء في الانتظار</span><span class="wc" id="waitCount">0</span><span class="wa">‹</span></button>
 
 <div class="meta"><span id="count"></span><span id="last"></span></div>
@@ -333,7 +340,8 @@ async function api(params,quiet){
 function setOnline(v){online=v;$('#dot').className='dot '+(v?'on':'off');showLast()}
 function syncLbl(){const n=data.contacts.length;$('#sync').textContent=(online===false?'غير متزامن':(data.at?'متزامن':'الساحة العراقية'))+(n?' ( '+n+' اسم )':'')}
 function showLast(){syncLbl()}
-const PIN_STYLE='button';
+const PIN_STYLE='swap';   // 'swap' الواجهة = الانتظار وجهات الاتصال داخل زر / 'button' / 'chips'
+let mode='wait';
 function renderWait(pins){
   pins=pins||data.contacts.filter(isPinned).sort((a,b)=>a.name.localeCompare(b.name,'ar'));
   if(!pins.length){$('#waitList').innerHTML='<div class="empty">ماكو أسماء بالانتظار</div>';if(stack.includes('#shWait'))setTimeout(()=>{if(!data.contacts.some(isPinned)&&stack[stack.length-1]==='#shWait')close()},800);return}
@@ -352,12 +360,18 @@ function render(fromTimer){
   const q=norm($('#q').value);const qd=digits($('#q').value);
   $('#qx').style.display=$('#q').value?'block':'none';
   const all=data.contacts.slice().sort((a,b)=>a.name.localeCompare(b.name,'ar'));
-  const list=q?all.filter(c=>norm(c.name).includes(q)||(qd.length>=2&&digits(c.phone).includes(qd))||norm(c.note).includes(q)):all;
+  const list=q?all.filter(c=>norm(c.name).includes(q)||(qd.length>=2&&digits(c.phone).includes(qd))||norm(c.note).includes(q))
+    :(PIN_STYLE==='swap'&&mode==='wait'?all.filter(isPinned):all);
+  const waitView=PIN_STYLE==='swap'&&mode==='wait'&&!q;
 
   // المثبتة — PIN_STYLE: 'button' زر «الأسماء في الانتظار» / 'chips' الشريط القديم
   const pins=all.filter(isPinned).sort((a,b)=>a.name.localeCompare(b.name,'ar'));
   $('#pins').classList.toggle('show',PIN_STYLE==='chips'&&pins.length>0);
   $('#waitBtn').classList.toggle('show',PIN_STYLE==='button'&&pins.length>0);
+  const sw=PIN_STYLE==='swap';
+  $('#allBtn').classList.toggle('show',sw&&mode==='wait'&&!q);$('#allCount').textContent=all.length;
+  $('#modeBar').classList.toggle('show',sw&&mode==='all'&&!q);$('#modeCount').textContent=all.length+' اسم';
+  $('#wTitle').classList.toggle('show',sw&&mode==='wait'&&!q&&pins.length>0);$('#wTitleN').textContent='('+pins.length+')';
   $('#waitCount').textContent=pins.length;
   renderWait(pins);
   syncLbl();
@@ -373,14 +387,15 @@ function render(fromTimer){
   $('.meta').style.display=q?'flex':'none';
   if(!all.length||!list.length)buildFS(false);
   if(!all.length){$('#list').innerHTML=`<div class="empty"><div class="big">📇</div>${cfg.key?'بعد ماكو أسماء.<br>اضغط زر + حتى تضيف أول مشتري':'اربط التطبيق بالسيرفر أول شي'}</div>`;return}
+  if(!list.length&&waitView){$('#list').innerHTML=`<div class="empty"><div class="big">📌</div>ماكو أسماء بالانتظار.<br>افتح «جهات الاتصال» وثبّت أي اسم حتى يطلع هنا</div>`;return}
   if(!list.length){$('#list').innerHTML=`<div class="empty"><div class="big">🔍</div>ماكو نتيجة لـ «${esc($('#q').value)}»<br><button class="btn pri" style="margin-top:14px" id="addFromQ">إضافة «${esc($('#q').value)}»</button></div>`;return}
   let h='',L=null;
   for(const c of list){
     const l=letter(c.name);
-    if(l!==L&&!q){h+=`<div class="lsec" data-l="${esc(l)}">${esc(l)}</div>`;L=l}
+    if(l!==L&&!q&&!waitView){h+=`<div class="lsec" data-l="${esc(l)}">${esc(l)}</div>`;L=l}
     h+=`<div class="row" data-id="${c.id}">
       <div class="av" style="background:${color(c.name)}">${esc(initial(c.name))}</div>
-      <div class="info"><div class="n">${esc(c.name)}${isPinned(c)?'<span class="pinic">📌</span>':''}</div>
+      <div class="info"><div class="n">${esc(c.name)}${isPinned(c)&&!waitView?'<span class="pinic">📌</span>':''}</div>
         ${c.phone?`<div class="p">${esc(fmtPhone(c.phone))}</div>`:''}
         ${c.note?`<div class="note">${esc(c.note)}</div>`:''}</div>
       ${c.phone?`<button class="qcall" data-call="${c.id}">${IC.call}</button>`:''}
@@ -399,7 +414,7 @@ function zfix(){stack.forEach((x,i)=>{$(x).style.zIndex=50+i*2});$('#shade').sty
 function open(id){const el=$(id);stack=stack.filter(x=>x!==id);stack.push(id);zfix();el.classList.add('show');$('#shade').classList.add('show')}
 function close(){const id=stack.pop();if(id)$(id).classList.remove('show');zfix();if(!stack.length)$('#shade').classList.remove('show');if(id==='#shView'||id==='#shQuick')curId=null;return !!id}
 function closeAll(){while(stack.length)close()}
-window.onBack=function(){if(stack.length){close();return true}if($('#q').value){$('#q').value='';render();return true}return false};
+window.onBack=function(){if(stack.length){close();return true}if(mode==='all'&&!$('#q').value){setMode('wait');return true}if($('#q').value){$('#q').value='';render();return true}return false};
 
 function renderView(){
   const c=byId(curId);if(!c){close();return}
@@ -657,6 +672,8 @@ document.addEventListener('click',e=>{
 });
 $('#shade').onclick=close;
 $('#fab').onclick=()=>openEdit(null);
+function setMode(m){mode=m;render();window.scrollTo(0,0)}
+$('#allBtn').onclick=()=>setMode('all');$('#modeBack').onclick=()=>setMode('wait');
 $('#waitBtn').onclick=()=>{renderWait();open('#shWait')};
 $('#btnSet').onclick=()=>openSet();
 // ضغطة مطولة على رقم النسخة = تعديل الربط يدوياً
